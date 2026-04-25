@@ -21,6 +21,11 @@ export interface FigureAnnotationRecord {
 
 export const IMAGE_ANNOTATION_TYPE_ID = 3;
 
+let figureAnnotationCache: FigureAnnotationRecord[] | null = null;
+let figureAnnotationLoadPromise: Promise<FigureAnnotationRecord[]> | null =
+  null;
+let figureAnnotationLoadVersion = 0;
+
 export interface FigureAnnotationPosition {
   pageIndex?: number;
   rects?: number[][];
@@ -31,6 +36,10 @@ export interface FigureAnnotationPosition {
 export interface ImageAnnotationIDQuery {
   sql: string;
   params: Array<number | string>;
+}
+
+export interface CollectFigureAnnotationsOptions {
+  forceRefresh?: boolean;
 }
 
 export interface RuntimeTopLevelItem {
@@ -161,7 +170,42 @@ function dateStringToTime(value: string) {
   return Number.isFinite(time) ? time : 0;
 }
 
-export async function collectFigureAnnotations() {
+export async function collectFigureAnnotations(
+  options: CollectFigureAnnotationsOptions = {},
+) {
+  if (!options.forceRefresh) {
+    if (figureAnnotationCache) {
+      return [...figureAnnotationCache];
+    }
+    if (figureAnnotationLoadPromise) {
+      return [...(await figureAnnotationLoadPromise)];
+    }
+  }
+
+  const loadVersion = ++figureAnnotationLoadVersion;
+  const loadPromise = loadFigureAnnotations();
+  figureAnnotationLoadPromise = loadPromise;
+
+  try {
+    const records = await loadPromise;
+    if (loadVersion === figureAnnotationLoadVersion) {
+      figureAnnotationCache = [...records];
+    }
+    return [...records];
+  } finally {
+    if (figureAnnotationLoadPromise === loadPromise) {
+      figureAnnotationLoadPromise = null;
+    }
+  }
+}
+
+export function clearFigureAnnotationCache() {
+  figureAnnotationCache = null;
+  figureAnnotationLoadPromise = null;
+  figureAnnotationLoadVersion += 1;
+}
+
+async function loadFigureAnnotations() {
   const records: FigureAnnotationRecord[] = [];
   const libraries = Zotero.Libraries.getAll().filter(
     (library) => library.libraryType !== "feed",

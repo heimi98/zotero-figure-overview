@@ -324,11 +324,11 @@ input {
     auto-fill,
     minmax(var(--figure-card-width), 1fr)
   );
-  gap: 14px;
+  gap: 10px;
   align-content: start;
   align-items: start;
   justify-content: stretch;
-  padding: 18px 20px 22px;
+  padding: 10px 12px 14px;
 }
 
 .figure-card {
@@ -379,9 +379,9 @@ input {
 .figure-meta {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  padding: 9px 10px 10px;
+  padding: 7px 8px 8px;
 }
 
 .figure-swatch {

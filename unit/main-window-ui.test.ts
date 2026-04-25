@@ -68,6 +68,15 @@ test("overview collection tree has expand and collapse all controls", () => {
   assert.ok(xhtml.includes("zotero-figure-overview-collapse-all"));
 });
 
+test("overview omits empty collection section titles", () => {
+  const source = readFileSync(
+    path.join(process.cwd(), "src/modules/overviewScript.ts"),
+    "utf8",
+  );
+
+  assert.match(source, /if\s*\(\s*section\.label\.trim\(\)\s*\)/);
+});
+
 test("overview window scrolls inside the sidebar and grid scroll frame", () => {
   const css = readFileSync(
     path.join(process.cwd(), "addon/content/overview.css"),
@@ -107,6 +116,18 @@ test("image tiles keep a stable height and the size slider is compact", () => {
   );
   assert.match(css, /\.figure-grid\s*{[^}]*justify-content:\s*stretch/s);
   assert.match(css, /\.figure-size-control input\s*{[^}]*width:\s*120px/s);
+});
+
+test("overview image grid uses compact outer and tile spacing", () => {
+  const css = readFileSync(
+    path.join(process.cwd(), "addon/content/overview.css"),
+    "utf8",
+  );
+
+  assert.match(css, /\.figure-grid\s*{[^}]*gap:\s*10px/s);
+  assert.match(css, /\.figure-grid\s*{[^}]*padding:\s*10px 12px 14px/s);
+  assert.match(css, /\.figure-meta\s*{[^}]*gap:\s*6px/s);
+  assert.match(css, /\.figure-meta\s*{[^}]*padding:\s*7px 8px 8px/s);
 });
 
 test("image tiles keep a fixed preview height instead of collapsing to lines", () => {

@@ -38,11 +38,7 @@ page and install it in Zotero through:
 Tools -> Plugins -> Install Plugin From File...
 ```
 
-For version `0.1.0`, the release asset is expected at:
-
-```text
-https://github.com/heimi98/zotero-figure-overview/releases/download/v0.1.0/zotero-figure-overview.xpi
-```
+Each versioned release includes a `zotero-figure-overview.xpi` asset.
 
 The plugin update manifest is published as `update.json` under the `release`
 tag:

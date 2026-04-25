@@ -37,7 +37,7 @@ class OverviewController {
 
   async init() {
     this.getRefreshButton().addEventListener("click", () => {
-      void this.reload();
+      void this.reload({ forceRefresh: true });
     });
     this.getSizeInput().addEventListener("input", () => {
       this.filters.thumbnailSize = clampThumbnailSize(
@@ -61,10 +61,10 @@ class OverviewController {
     this.getGrid().replaceChildren();
   }
 
-  private async reload() {
+  private async reload(options: { forceRefresh?: boolean } = {}) {
     this.getStatus().textContent = getString("overview-loading");
     try {
-      this.records = await collectFigureAnnotations();
+      this.records = await collectFigureAnnotations(options);
       this.sections = getCollectionTreeSections(this.records);
       this.collectionTreeState = createCollapsedCollectionTreeState();
       this.filters = createDefaultOverviewFilters(this.records);
@@ -132,10 +132,12 @@ class OverviewController {
     container.replaceChildren();
     for (const section of this.sections) {
       const sectionElement = createHTMLElement(this.win, "section");
-      const title = createHTMLElement(this.win, "div");
-      title.className = "figure-library-title";
-      title.textContent = section.label;
-      sectionElement.append(title);
+      if (section.label.trim()) {
+        const title = createHTMLElement(this.win, "div");
+        title.className = "figure-library-title";
+        title.textContent = section.label;
+        sectionElement.append(title);
+      }
       for (const node of section.children) {
         this.appendCollectionNode(sectionElement, node, 0);
       }
