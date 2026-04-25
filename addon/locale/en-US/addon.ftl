@@ -1,0 +1,15 @@
+toolbar-button-tooltip = Open figure overview
+overview-title = Figure Overview
+overview-refresh = Refresh
+overview-expand-all = Expand all
+overview-collapse-all = Collapse all
+overview-colors = Colors
+overview-folders = Collections
+overview-size = Size
+overview-count = { $shown } / { $total }
+overview-loading = Loading image annotations...
+overview-load-failed = Figure overview could not load. Click Refresh to try again.
+overview-empty = No image annotations match the current filters.
+overview-image-missing = Image cache not available
+overview-uncategorized = Unfiled
+overview-open-failed = Could not open this annotation in Zotero Reader.

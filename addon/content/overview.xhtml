@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<window
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  id="zotero-figure-overview-window"
+  title="Zotero Figure Overview"
+  width="1180"
+  height="780"
+  persist="screenX screenY width height"
+>
+  <linkset>
+    <html:link rel="localization" href="__addonRef__-addon.ftl" />
+    <html:link
+      rel="stylesheet"
+      href="chrome://__addonRef__/content/overview.css"
+    />
+  </linkset>
+
+  <html:main id="zotero-figure-overview-root" class="figure-overview">
+    <html:aside class="figure-sidebar">
+      <html:div class="figure-sidebar-header">
+        <html:h1 data-l10n-id="overview-title"></html:h1>
+        <html:button
+          id="zotero-figure-overview-refresh"
+          class="figure-button"
+          type="button"
+          data-l10n-id="overview-refresh"
+        ></html:button>
+      </html:div>
+      <html:div
+        class="figure-filter-label"
+        data-l10n-id="overview-folders"
+      ></html:div>
+      <html:div class="figure-collection-actions">
+        <html:button
+          id="zotero-figure-overview-expand-all"
+          class="figure-button figure-button-compact"
+          type="button"
+          data-l10n-id="overview-expand-all"
+        ></html:button>
+        <html:button
+          id="zotero-figure-overview-collapse-all"
+          class="figure-button figure-button-compact"
+          type="button"
+          data-l10n-id="overview-collapse-all"
+        ></html:button>
+      </html:div>
+      <html:div
+        id="zotero-figure-overview-collections"
+        class="figure-collections"
+      ></html:div>
+    </html:aside>
+
+    <html:section class="figure-content">
+      <html:div class="figure-toolbar">
+        <html:div class="figure-toolbar-group">
+          <html:span
+            class="figure-filter-label"
+            data-l10n-id="overview-colors"
+          ></html:span>
+          <html:div
+            id="zotero-figure-overview-colors"
+            class="figure-color-list"
+          ></html:div>
+        </html:div>
+        <html:label class="figure-size-control">
+          <html:span
+            class="figure-filter-label"
+            data-l10n-id="overview-size"
+          ></html:span>
+          <html:input
+            id="zotero-figure-overview-size"
+            type="range"
+            min="140"
+            max="420"
+            step="20"
+          />
+        </html:label>
+        <html:div
+          id="zotero-figure-overview-count"
+          class="figure-count"
+        ></html:div>
+      </html:div>
+      <html:div
+        id="zotero-figure-overview-status"
+        class="figure-status"
+      ></html:div>
+      <html:div class="figure-grid-scroll">
+        <html:div
+          id="zotero-figure-overview-grid"
+          class="figure-grid"
+        ></html:div>
+      </html:div>
+    </html:section>
+  </html:main>
+</window>

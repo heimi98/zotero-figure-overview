@@ -1,0 +1,61 @@
+{
+  "name": "zotero-figure-overview",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Browse Zotero image annotations in an Eagle-style overview window.",
+  "config": {
+    "addonName": "Zotero Figure Overview",
+    "addonID": "zotero-figure-overview@xuan.dev",
+    "addonRef": "zotero-figure-overview",
+    "addonInstance": "ZoteroFigureOverview",
+    "prefsPrefix": "extensions.zotero.zotero-figure-overview"
+  },
+  "author": "heimi98",
+  "homepage": "https://github.com/heimi98/zotero-figure-overview",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/heimi98/zotero-figure-overview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/heimi98/zotero-figure-overview/issues"
+  },
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "start": "zotero-plugin serve",
+    "build": "zotero-plugin build && tsc --noEmit && npm run test:unit",
+    "lint:check": "prettier --check . && eslint .",
+    "lint:fix": "prettier --write . && eslint . --fix",
+    "release": "zotero-plugin release",
+    "test": "npm run test:unit",
+    "test:unit": "tsx --test unit/**/*.test.ts",
+    "test:zotero": "zotero-plugin test"
+  },
+  "dependencies": {
+    "zotero-plugin-toolkit": "^5.1.0-beta.13"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@zotero-plugin/eslint-config": "^0.6.7",
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "zotero-plugin-scaffold": "^0.8.2",
+    "zotero-types": "^4.1.0-beta.4"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "tabWidth": 2,
+    "endOfLine": "lf",
+    "overrides": [
+      {
+        "files": [
+          "*.xhtml"
+        ],
+        "options": {
+          "htmlWhitespaceSensitivity": "css"
+        }
+      }
+    ]
+  }
+}

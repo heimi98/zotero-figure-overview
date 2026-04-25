@@ -1,0 +1,15 @@
+toolbar-button-tooltip = 打开截图总览
+overview-title = 截图总览
+overview-refresh = 刷新
+overview-expand-all = 展开全部
+overview-collapse-all = 收起全部
+overview-colors = 颜色
+overview-folders = 集合
+overview-size = 大小
+overview-count = { $shown } / { $total }
+overview-loading = 正在读取区域截图批注...
+overview-load-failed = 截图总览加载失败。可以点击刷新重试。
+overview-empty = 当前筛选条件下没有区域截图批注。
+overview-image-missing = 图片缓存不可用
+overview-uncategorized = 未分类
+overview-open-failed = 无法在 Zotero Reader 中打开该批注。
