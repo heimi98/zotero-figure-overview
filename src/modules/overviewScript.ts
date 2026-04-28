@@ -25,6 +25,9 @@ import {
 import { openFigureInReader } from "./reader-navigation";
 
 const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+const HOVER_PREVIEW_DELAY_MS = 1000;
+const HOVER_PREVIEW_VIEWPORT_RATIO = 0.72;
+const HOVER_PREVIEW_MARGIN = 12;
 
 class OverviewController {
   private records: FigureAnnotationRecord[] = [];
@@ -32,6 +35,9 @@ class OverviewController {
   private sections: CollectionTreeSection[] = [];
   private collectionTreeState: CollectionTreeState =
     createCollapsedCollectionTreeState();
+  private hoverPreviewTimer: number | null = null;
+  private hoverPreviewElement: HTMLElement | null = null;
+  private hoverPreviewImage: HTMLImageElement | null = null;
 
   constructor(private readonly win: Window) {}
 
@@ -58,10 +64,12 @@ class OverviewController {
   }
 
   teardown() {
+    this.hideHoverPreview();
     this.getGrid().replaceChildren();
   }
 
   private async reload(options: { forceRefresh?: boolean } = {}) {
+    this.hideHoverPreview();
     this.getStatus().textContent = getString("overview-loading");
     try {
       this.records = await collectFigureAnnotations(options);
@@ -90,6 +98,7 @@ class OverviewController {
   }
 
   private render() {
+    this.hideHoverPreview();
     const visibleRecords = this.records.filter((record) =>
       recordMatchesOverviewFilters(record, this.filters),
     );
@@ -238,7 +247,16 @@ class OverviewController {
         image.draggable = false;
         image.alt = record.topLevelTitle;
         image.addEventListener("error", () => {
+          this.hideHoverPreview();
           imageWrap.replaceChildren(this.createMissingImageMessage());
+        });
+        imageWrap.addEventListener("mouseenter", () => {
+          this.scheduleHoverPreview(image, record);
+        });
+        imageWrap.addEventListener("mouseleave", () => {
+          if (!this.hoverPreviewElement) {
+            this.clearHoverPreviewTimer();
+          }
         });
         imageWrap.append(image);
       } else {
@@ -274,6 +292,84 @@ class OverviewController {
     message.className = "figure-missing";
     message.textContent = getString("overview-image-missing");
     return message;
+  }
+
+  private scheduleHoverPreview(
+    image: HTMLImageElement,
+    record: FigureAnnotationRecord,
+  ) {
+    this.hideHoverPreview();
+    this.hoverPreviewTimer = this.win.setTimeout(() => {
+      this.hoverPreviewTimer = null;
+      this.showHoverPreview(image, record);
+    }, HOVER_PREVIEW_DELAY_MS);
+  }
+
+  private showHoverPreview(
+    sourceImage: HTMLImageElement,
+    record: FigureAnnotationRecord,
+  ) {
+    const sourceRect = sourceImage.getBoundingClientRect();
+    const previewSize = getHoverPreviewSize(this.win, sourceImage, sourceRect);
+    const previewHost = this.getHoverPreviewHost();
+    if (!previewSize || !previewHost) {
+      return;
+    }
+
+    const preview = createHTMLElement(this.win, "div");
+    preview.className = "figure-hover-preview";
+
+    const previewImage = createHTMLElement(this.win, "img");
+    previewImage.src = sourceImage.currentSrc || sourceImage.src;
+    previewImage.alt = record.topLevelTitle;
+    previewImage.draggable = false;
+    previewImage.style.width = `${previewSize.width}px`;
+    previewImage.style.height = `${previewSize.height}px`;
+
+    preview.addEventListener("mouseleave", () => {
+      this.hideHoverPreview();
+    });
+    preview.addEventListener("dblclick", () => {
+      void this.openRecord(record);
+    });
+    preview.append(previewImage);
+    previewHost.append(preview);
+
+    this.hoverPreviewElement = preview;
+    this.hoverPreviewImage = previewImage;
+    this.positionHoverPreview(preview, sourceRect, previewSize);
+  }
+
+  private getHoverPreviewHost() {
+    return (
+      this.win.document.body ??
+      this.win.document.getElementById("zotero-figure-overview-root")
+    );
+  }
+
+  private positionHoverPreview(
+    preview: HTMLElement,
+    sourceRect: DOMRect,
+    previewSize: HoverPreviewSize,
+  ) {
+    const position = getHoverPreviewPosition(this.win, sourceRect, previewSize);
+    preview.style.left = `${position.left}px`;
+    preview.style.top = `${position.top}px`;
+  }
+
+  private hideHoverPreview() {
+    this.clearHoverPreviewTimer();
+    this.hoverPreviewElement?.remove();
+    this.hoverPreviewElement = null;
+    this.hoverPreviewImage = null;
+  }
+
+  private clearHoverPreviewTimer() {
+    if (this.hoverPreviewTimer === null) {
+      return;
+    }
+    this.win.clearTimeout(this.hoverPreviewTimer);
+    this.hoverPreviewTimer = null;
   }
 
   private async openRecord(record: FigureAnnotationRecord) {
@@ -423,4 +519,135 @@ function createHTMLElement<K extends keyof HTMLElementTagNameMap>(
 
 function getImageWrapHeight(thumbnailSize: number) {
   return Math.round(thumbnailSize * 0.72);
+}
+
+interface HoverPreviewSize {
+  width: number;
+  height: number;
+}
+
+interface HoverPreviewPosition {
+  left: number;
+  top: number;
+}
+
+function getHoverPreviewSize(
+  win: Window,
+  sourceImage: HTMLImageElement,
+  sourceRect: DOMRect,
+) {
+  const aspectRatio = getHoverPreviewAspectRatio(sourceImage, sourceRect);
+  if (!aspectRatio) {
+    return null;
+  }
+
+  const availableWidth = Math.max(1, win.innerWidth - HOVER_PREVIEW_MARGIN * 2);
+  const availableHeight = Math.max(
+    1,
+    win.innerHeight - HOVER_PREVIEW_MARGIN * 2,
+  );
+  const targetWidth = Math.min(
+    availableWidth,
+    Math.max(1, win.innerWidth * HOVER_PREVIEW_VIEWPORT_RATIO),
+  );
+  const targetHeight = Math.min(
+    availableHeight,
+    Math.max(1, win.innerHeight * HOVER_PREVIEW_VIEWPORT_RATIO),
+  );
+  const targetAspectRatio = targetWidth / targetHeight;
+
+  if (aspectRatio > targetAspectRatio) {
+    return {
+      width: Math.round(targetWidth),
+      height: Math.max(1, Math.round(targetWidth / aspectRatio)),
+    };
+  }
+
+  return {
+    width: Math.max(1, Math.round(targetHeight * aspectRatio)),
+    height: Math.round(targetHeight),
+  };
+}
+
+function getHoverPreviewAspectRatio(
+  sourceImage: HTMLImageElement,
+  sourceRect: DOMRect,
+) {
+  if (sourceImage.naturalWidth > 0 && sourceImage.naturalHeight > 0) {
+    return sourceImage.naturalWidth / sourceImage.naturalHeight;
+  }
+  if (sourceRect.width > 0 && sourceRect.height > 0) {
+    return sourceRect.width / sourceRect.height;
+  }
+  return null;
+}
+
+function getHoverPreviewPosition(
+  win: Window,
+  sourceRect: DOMRect,
+  previewSize: HoverPreviewSize,
+): HoverPreviewPosition {
+  const candidates = getHoverPreviewCandidates(sourceRect, previewSize);
+  const maxLeft = win.innerWidth - previewSize.width - HOVER_PREVIEW_MARGIN;
+  const maxTop = win.innerHeight - previewSize.height - HOVER_PREVIEW_MARGIN;
+
+  for (const candidate of candidates) {
+    if (
+      candidate.left >= HOVER_PREVIEW_MARGIN &&
+      candidate.top >= HOVER_PREVIEW_MARGIN &&
+      candidate.left <= maxLeft &&
+      candidate.top <= maxTop
+    ) {
+      return candidate;
+    }
+  }
+
+  return {
+    left: clamp(
+      sourceRect.left + sourceRect.width / 2 - previewSize.width / 2,
+      HOVER_PREVIEW_MARGIN,
+      maxLeft,
+    ),
+    top: clamp(
+      sourceRect.top + sourceRect.height / 2 - previewSize.height / 2,
+      HOVER_PREVIEW_MARGIN,
+      maxTop,
+    ),
+  };
+}
+
+function getHoverPreviewCandidates(
+  sourceRect: DOMRect,
+  previewSize: HoverPreviewSize,
+): HoverPreviewPosition[] {
+  const centeredTop =
+    sourceRect.top + sourceRect.height / 2 - previewSize.height / 2;
+  const centeredLeft =
+    sourceRect.left + sourceRect.width / 2 - previewSize.width / 2;
+
+  return [
+    {
+      left: sourceRect.right + HOVER_PREVIEW_MARGIN,
+      top: centeredTop,
+    },
+    {
+      left: sourceRect.left - previewSize.width - HOVER_PREVIEW_MARGIN,
+      top: centeredTop,
+    },
+    {
+      left: centeredLeft,
+      top: sourceRect.bottom + HOVER_PREVIEW_MARGIN,
+    },
+    {
+      left: centeredLeft,
+      top: sourceRect.top - previewSize.height - HOVER_PREVIEW_MARGIN,
+    },
+  ];
+}
+
+function clamp(value: number, min: number, max: number) {
+  if (max < min) {
+    return min;
+  }
+  return Math.min(max, Math.max(min, value));
 }

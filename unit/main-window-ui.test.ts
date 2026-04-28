@@ -174,6 +174,46 @@ test("thumbnail preview height is independent from the scroll container", () => 
   assert.match(css, /\.figure-image-wrap img\s*{[^}]*object-fit:\s*contain/s);
 });
 
+test("overview supports delayed viewport-adaptive hover image previews", () => {
+  const source = readFileSync(
+    path.join(process.cwd(), "src/modules/overviewScript.ts"),
+    "utf8",
+  );
+  const css = readFileSync(
+    path.join(process.cwd(), "addon/content/overview.css"),
+    "utf8",
+  );
+
+  assert.ok(source.includes("HOVER_PREVIEW_DELAY_MS = 1000"));
+  assert.ok(source.includes("HOVER_PREVIEW_VIEWPORT_RATIO = 0.72"));
+  assert.ok(!source.includes("HOVER_PREVIEW_SCALE"));
+  assert.ok(source.includes("hoverPreviewTimer"));
+  assert.ok(source.includes("showHoverPreview"));
+  assert.ok(source.includes("hideHoverPreview"));
+  assert.ok(source.includes("sourceImage.naturalWidth"));
+  assert.ok(source.includes("sourceImage.naturalHeight"));
+  assert.ok(source.includes("getHoverPreviewAspectRatio"));
+  assert.ok(source.includes("getHoverPreviewPosition"));
+  assert.ok(source.includes("getHoverPreviewCandidates"));
+  assert.ok(source.includes('addEventListener("mouseenter"'));
+  assert.ok(source.includes('addEventListener("mouseleave"'));
+  assert.ok(source.includes('addEventListener("dblclick"'));
+  assert.ok(source.includes("void this.openRecord(record)"));
+  assert.ok(source.includes("getBoundingClientRect"));
+  assert.ok(source.includes("getHoverPreviewHost"));
+  assert.ok(source.includes("document.body"));
+  assert.ok(source.includes("zotero-figure-overview-root"));
+  assert.ok(source.includes("append(preview)"));
+  assert.ok(source.includes('createHTMLElement(this.win, "div")'));
+  assert.match(source, /teardown\(\)\s*{[^}]*this\.hideHoverPreview\(\)/s);
+  assert.match(css, /\.figure-hover-preview\s*{[^}]*position:\s*fixed/s);
+  assert.match(css, /\.figure-hover-preview\s*{[^}]*z-index:\s*1000/s);
+  assert.match(
+    css,
+    /\.figure-hover-preview img\s*{[^}]*object-fit:\s*contain/s,
+  );
+});
+
 test("collection disclosure buttons opt out of native button chrome", () => {
   const css = readFileSync(
     path.join(process.cwd(), "addon/content/overview.css"),
