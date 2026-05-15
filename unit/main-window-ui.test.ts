@@ -141,6 +141,21 @@ test("image tiles keep a fixed preview height instead of collapsing to lines", (
   assert.ok(!source.includes("setImageWrapHeightFromNaturalSize"));
 });
 
+test("overview lazy-loads figure image files instead of starting every image at once", () => {
+  const source = readFileSync(
+    path.join(process.cwd(), "src/modules/overviewScript.ts"),
+    "utf8",
+  );
+
+  assert.ok(source.includes("INITIAL_EAGER_IMAGE_COUNT"));
+  assert.ok(source.includes("IntersectionObserver"));
+  assert.ok(source.includes("loadLazyImage"));
+  assert.ok(source.includes('setAttribute("data-figure-src"'));
+  assert.ok(source.includes('setAttribute("loading", "lazy")'));
+  assert.ok(source.includes('setAttribute("decoding", "async")'));
+  assert.doesNotMatch(source, /image\.src\s*=\s*record\.imageURI/);
+});
+
 test("overview dynamic nodes are created in the XHTML namespace", () => {
   const source = readFileSync(
     path.join(process.cwd(), "src/modules/overviewScript.ts"),

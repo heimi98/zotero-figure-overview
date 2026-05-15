@@ -4,6 +4,7 @@ import {
   createCollapsedCollectionTreeState,
   expandAllCollectionNodes,
   getDescendantKeys,
+  sortCollectionTreeNodes,
   type CollectionTreeNode,
   type CollectionTreeSection,
   type CollectionTreeState,
@@ -28,6 +29,10 @@ const XHTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const HOVER_PREVIEW_DELAY_MS = 1000;
 const HOVER_PREVIEW_VIEWPORT_RATIO = 0.72;
 const HOVER_PREVIEW_MARGIN = 12;
+const INITIAL_EAGER_IMAGE_COUNT = 24;
+const LAZY_IMAGE_ROOT_MARGIN = "640px 0px";
+const LAZY_IMAGE_FALLBACK_BATCH_SIZE = 6;
+const LAZY_IMAGE_FALLBACK_DELAY_MS = 48;
 
 class OverviewController {
   private records: FigureAnnotationRecord[] = [];
@@ -38,6 +43,9 @@ class OverviewController {
   private hoverPreviewTimer: number | null = null;
   private hoverPreviewElement: HTMLElement | null = null;
   private hoverPreviewImage: HTMLImageElement | null = null;
+  private imageObserver: IntersectionObserver | null = null;
+  private lazyImageQueue: HTMLImageElement[] = [];
+  private lazyImageQueueTimer: number | null = null;
 
   constructor(private readonly win: Window) {}
 
@@ -65,6 +73,7 @@ class OverviewController {
 
   teardown() {
     this.hideHoverPreview();
+    this.resetLazyImageLoading();
     this.getGrid().replaceChildren();
   }
 
@@ -218,8 +227,11 @@ class OverviewController {
   }
 
   private renderCards(records: FigureAnnotationRecord[]) {
+    this.resetLazyImageLoading();
+    this.imageObserver = this.createImageObserver();
     const grid = this.getGrid();
     grid.replaceChildren();
+    let eagerImageCount = 0;
 
     for (const record of records) {
       const card = createHTMLElement(this.win, "article");
@@ -243,14 +255,20 @@ class OverviewController {
       imageWrap.style.height = previewHeight;
       if (record.imageURI) {
         const image = createHTMLElement(this.win, "img");
-        image.src = record.imageURI;
         image.draggable = false;
         image.alt = record.topLevelTitle;
+        this.configureLazyImage(
+          image,
+          record.imageURI,
+          eagerImageCount < INITIAL_EAGER_IMAGE_COUNT,
+        );
+        eagerImageCount += 1;
         image.addEventListener("error", () => {
           this.hideHoverPreview();
           imageWrap.replaceChildren(this.createMissingImageMessage());
         });
         imageWrap.addEventListener("mouseenter", () => {
+          this.loadLazyImage(image);
           this.scheduleHoverPreview(image, record);
         });
         imageWrap.addEventListener("mouseleave", () => {
@@ -292,6 +310,95 @@ class OverviewController {
     message.className = "figure-missing";
     message.textContent = getString("overview-image-missing");
     return message;
+  }
+
+  private configureLazyImage(
+    image: HTMLImageElement,
+    source: string,
+    loadImmediately: boolean,
+  ) {
+    image.setAttribute("data-figure-src", source);
+    image.setAttribute("loading", "lazy");
+    image.setAttribute("decoding", "async");
+
+    if (loadImmediately) {
+      this.loadLazyImage(image);
+      return;
+    }
+
+    if (this.imageObserver) {
+      this.imageObserver.observe(image);
+      return;
+    }
+
+    this.queueLazyImage(image);
+  }
+
+  private createImageObserver() {
+    const Observer = this.win.IntersectionObserver;
+    if (typeof Observer !== "function") {
+      return null;
+    }
+
+    return new Observer(
+      (entries: IntersectionObserverEntry[]) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting || entry.intersectionRatio > 0) {
+            this.loadLazyImage(entry.target as HTMLImageElement);
+          }
+        }
+      },
+      {
+        root: this.getGridScrollFrame(),
+        rootMargin: LAZY_IMAGE_ROOT_MARGIN,
+      },
+    );
+  }
+
+  private loadLazyImage(image: HTMLImageElement) {
+    const source = image.getAttribute("data-figure-src");
+    if (!source) {
+      return;
+    }
+
+    image.removeAttribute("data-figure-src");
+    this.imageObserver?.unobserve(image);
+    image.src = source;
+  }
+
+  private queueLazyImage(image: HTMLImageElement) {
+    this.lazyImageQueue.push(image);
+    this.scheduleLazyImageQueue();
+  }
+
+  private scheduleLazyImageQueue() {
+    if (this.lazyImageQueueTimer !== null) {
+      return;
+    }
+
+    this.lazyImageQueueTimer = this.win.setTimeout(() => {
+      this.lazyImageQueueTimer = null;
+      const batch = this.lazyImageQueue.splice(
+        0,
+        LAZY_IMAGE_FALLBACK_BATCH_SIZE,
+      );
+      for (const image of batch) {
+        this.loadLazyImage(image);
+      }
+      if (this.lazyImageQueue.length) {
+        this.scheduleLazyImageQueue();
+      }
+    }, LAZY_IMAGE_FALLBACK_DELAY_MS);
+  }
+
+  private resetLazyImageLoading() {
+    this.imageObserver?.disconnect();
+    this.imageObserver = null;
+    this.lazyImageQueue = [];
+    if (this.lazyImageQueueTimer !== null) {
+      this.win.clearTimeout(this.lazyImageQueueTimer);
+      this.lazyImageQueueTimer = null;
+    }
   }
 
   private scheduleHoverPreview(
@@ -423,6 +530,10 @@ class OverviewController {
     return this.getElement<HTMLElement>("zotero-figure-overview-grid");
   }
 
+  private getGridScrollFrame() {
+    return this.getGrid().parentElement;
+  }
+
   private getElement<T extends HTMLElement>(id: string) {
     const element = this.win.document.getElementById(id);
     if (!element) {
@@ -454,8 +565,10 @@ function getCollectionTreeSections(records: FigureAnnotationRecord[]) {
     if (library.libraryType === "feed") {
       continue;
     }
-    const roots = Zotero.Collections.getByLibrary(library.id, false).map(
-      (collection) => buildCollectionNode(collection),
+    const roots = sortCollectionTreeNodes(
+      Zotero.Collections.getByLibrary(library.id, false).map((collection) =>
+        buildCollectionNode(collection),
+      ),
     );
     sections.push({
       key: `library:${library.id}`,
@@ -487,9 +600,11 @@ function buildCollectionNode(
   return {
     key: `${COLLECTION_KEY_PREFIX}${collection.id}`,
     label: collection.name,
-    children: collection
-      .getChildCollections(false, false)
-      .map((child) => buildCollectionNode(child)),
+    children: sortCollectionTreeNodes(
+      collection
+        .getChildCollections(false, false)
+        .map((child) => buildCollectionNode(child)),
+    ),
   };
 }
 

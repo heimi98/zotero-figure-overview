@@ -41,6 +41,47 @@ export function getDescendantKeys(node: CollectionTreeNode): string[] {
   ]);
 }
 
+export function sortCollectionTreeNodes<
+  T extends Pick<CollectionTreeNode, "key" | "label">,
+>(nodes: readonly T[]): T[] {
+  return [...nodes].sort(compareCollectionTreeNodes);
+}
+
+function compareCollectionTreeNodes<
+  T extends Pick<CollectionTreeNode, "key" | "label">,
+>(left: T, right: T) {
+  const labelOrder = compareCollectionLabels(left.label, right.label);
+  if (labelOrder) {
+    return labelOrder;
+  }
+
+  return left.key.localeCompare(right.key);
+}
+
+function compareCollectionLabels(left: string, right: string) {
+  const runtimeZotero = (
+    globalThis as typeof globalThis & {
+      Zotero?: { localeCompare?: (a: string, b: string) => number };
+    }
+  ).Zotero;
+
+  if (runtimeZotero?.localeCompare) {
+    return runtimeZotero.localeCompare(left, right);
+  }
+
+  return getFallbackCollator().compare(left, right);
+}
+
+let fallbackCollator: Intl.Collator | null = null;
+
+function getFallbackCollator() {
+  fallbackCollator ??= new Intl.Collator(undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+  return fallbackCollator;
+}
+
 function getExpandableNodeKeys(node: CollectionTreeNode): string[] {
   if (!node.children.length) {
     return [];

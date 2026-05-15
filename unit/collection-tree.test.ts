@@ -4,6 +4,7 @@ import {
   createCollapsedCollectionTreeState,
   expandAllCollectionNodes,
   getExpandableCollectionKeys,
+  sortCollectionTreeNodes,
   type CollectionTreeSection,
 } from "../src/modules/collection-tree";
 
@@ -45,5 +46,32 @@ test("expand all only expands nodes with children", () => {
   assert.deepEqual(
     [...state.expandedCollectionKeys],
     ["collection:1", "collection:3"],
+  );
+});
+
+test("collection nodes sort in Zotero main tree order", () => {
+  const nodes = [
+    { key: "collection:8", label: "8-Other", children: [] },
+    { key: "collection:1", label: "1-Transmit", children: [] },
+    { key: "collection:5", label: "5-Mode", children: [] },
+    { key: "collection:6", label: "6-Clinic", children: [] },
+    { key: "collection:4", label: "4-Processing", children: [] },
+    { key: "collection:7", label: "7-Safety", children: [] },
+    { key: "collection:3", label: "3-Beamforming", children: [] },
+    { key: "collection:2", label: "2-Synthetic Aperture", children: [] },
+  ];
+
+  assert.deepEqual(
+    sortCollectionTreeNodes(nodes).map((node) => node.label),
+    [
+      "1-Transmit",
+      "2-Synthetic Aperture",
+      "3-Beamforming",
+      "4-Processing",
+      "5-Mode",
+      "6-Clinic",
+      "7-Safety",
+      "8-Other",
+    ],
   );
 });
