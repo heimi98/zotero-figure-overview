@@ -78,10 +78,12 @@ The built XPI is written to `.scaffold/build/zotero-figure-overview.xpi`.
    unzip -p .scaffold/build/zotero-figure-overview.xpi manifest.json
    ```
 
-4. Publish `.scaffold/build/zotero-figure-overview.xpi` to the matching GitHub
-   release tag, for example `v0.1.0`.
-5. Publish `.scaffold/build/update.json` to the long-lived `release` tag so
-   Zotero can find update metadata.
+4. Commit the changes and publish a GitHub release with the matching version
+   tag, for example `v0.3.1`.
+5. Wait for the `Publish release` workflow to pass. It builds and verifies the
+   XPI, uploads `zotero-figure-overview.xpi` to the versioned release, and
+   refreshes `update.json` under the long-lived `release` tag for stable versions.
+   To retry a release, run the workflow manually with its existing version tag.
 
 ## Repository Metadata
 

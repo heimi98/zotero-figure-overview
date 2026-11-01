@@ -1,0 +1,75 @@
+name: Publish release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish (for example, v0.3.1)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: startsWith(github.event.release.tag_name || inputs.tag, 'v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Verify release version
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { readFileSync } from "node:fs";
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          assert.equal(process.env.RELEASE_TAG, `v${pkg.version}`);
+          NODE
+      - run: npm ci
+      - run: npm run lint:check
+      - run: npm run build
+      - name: Verify package and update metadata
+        run: |
+          unzip -p .scaffold/build/zotero-figure-overview.xpi manifest.json > /tmp/figure-overview-manifest.json
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { createHash } from "node:crypto";
+          import { readFileSync } from "node:fs";
+          const readJSON = (path) => JSON.parse(readFileSync(path, "utf8"));
+          const pkg = readJSON("package.json");
+          const manifest = readJSON("/tmp/figure-overview-manifest.json");
+          const update = readJSON(".scaffold/build/update.json").addons[pkg.config.addonID].updates.at(-1);
+          assert.equal(manifest.version, pkg.version);
+          assert.equal(update.version, pkg.version);
+          assert.equal(manifest.applications.zotero.id, pkg.config.addonID);
+          assert.equal(update.applications.zotero.strict_min_version, manifest.applications.zotero.strict_min_version);
+          assert.equal(update.applications.zotero.strict_max_version, manifest.applications.zotero.strict_max_version);
+          assert.equal(update.update_link, `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${process.env.RELEASE_TAG}/zotero-figure-overview.xpi`);
+          const hash = createHash("sha512").update(readFileSync(".scaffold/build/zotero-figure-overview.xpi")).digest("hex");
+          assert.equal(update.update_hash, `sha512:${hash}`);
+          NODE
+      - name: Upload XPI and refresh automatic updates
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release upload "$RELEASE_TAG" .scaffold/build/zotero-figure-overview.xpi --clobber
+          if [[ "$RELEASE_TAG" != *-* ]]; then
+            gh release upload release .scaffold/build/update.json --clobber
+          fi
