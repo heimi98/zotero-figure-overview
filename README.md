@@ -1,10 +1,10 @@
 # Zotero Figure Overview
 
-[![Zotero](https://img.shields.io/badge/Zotero-9.x-blue)](https://www.zotero.org/)
+[![Zotero](https://img.shields.io/badge/Zotero-9.x%20%7C%2010.0.x-blue)](https://www.zotero.org/)
 [![Release](https://img.shields.io/github/v/release/heimi98/zotero-figure-overview?display_name=tag)](https://github.com/heimi98/zotero-figure-overview/releases)
 [![License](https://img.shields.io/badge/license-AGPL--3.0--or--later-green)](https://www.gnu.org/licenses/agpl-3.0.en.html)
 
-Zotero Figure Overview is a Zotero 9 plugin that adds a top tab-bar button for
+Zotero Figure Overview is a Zotero 9/10 plugin that adds a top tab-bar button for
 opening an Eagle-style overview of Zotero Reader image annotations.
 
 The overview scans Zotero image annotations at open time, supports annotation
@@ -25,7 +25,7 @@ opens the source annotation in Zotero Reader on double-click.
 
 ## Requirements
 
-- Zotero 9.x
+- Zotero 9.x or 10.0.x (including 10.0.7)
 - Node.js 20 or newer for development builds
 
 ## Installation
@@ -87,5 +87,5 @@ The built XPI is written to `.scaffold/build/zotero-figure-overview.xpi`.
 
 - Add-on ID: `zotero-figure-overview@xuan.dev`
 - Namespace: `zotero-figure-overview`
-- Supported Zotero versions: `9.0` through `9.*`
+- Supported Zotero versions: `9.0` through `10.0.*`
 - License: AGPL-3.0-or-later
